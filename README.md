@@ -5,5 +5,5 @@ Over a period of time, the collection of papers one would need to refer and cite
 By leveraging Zotero's standard procedure for porting data around, one need not worry about losing data.  \
 Take a look at Zotero's documentation [here](https://www.zotero.org/support/kb/transferring_a_library) for more information.
 
-**Step 1**: Clone this repository to the location where Zotero expects the data to be found on your machine
+**Step 1**: Clone this repository to the location where Zotero expects the data to be found on your machine \
 **Step 2**: Rename the reposiroty name to 'Zotero' unless there is a different name that you have specified in your Zotero settings
