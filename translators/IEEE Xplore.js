@@ -1,19 +1,19 @@
 {
 	"translatorID": "92d4ed84-8d0-4d3c-941f-d4b9124cfbb",
-	"translatorType": 4,
 	"label": "IEEE Xplore",
 	"creator": "Simon Kornblith, Michael Berkowitz, Bastian Koenings, and Avram Lyon",
 	"target": "^https?://([^/]+\\.)?ieeexplore\\.ieee\\.org/([^#]+[&?]arnumber=\\d+|(abstract/)?document/|search/(searchresult|selected)\\.jsp|xpl/(mostRecentIssue|tocresult)\\.jsp\\?|xpl/conhome/\\d+/proceeding)",
 	"minVersion": "4.0",
-	"maxVersion": null,
+	"maxVersion": "",
 	"priority": 100,
 	"inRepository": true,
+	"translatorType": 4,
 	"browserSupport": "gcsibv",
-	"lastUpdated": "2020-03-25 18:10:00"
+	"lastUpdated": "2022-01-18 08:20:23"
 }
 
 function detectWeb(doc, url) {
-	if (doc.defaultView !== doc.defaultView.top) return false;
+	if (doc.defaultView !== null && doc.defaultView !== doc.defaultView.top) return false;
 	
 	if (/[?&]arnumber=(\d+)/i.test(url) || /\/document\/\d+/i.test(url)) {
 		var firstBreadcrumb = ZU.xpathText(doc, '(//div[contains(@class, "breadcrumbs")]//a)[1]');

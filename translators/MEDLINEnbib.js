@@ -1,14 +1,14 @@
 {
 	"translatorID": "9ec64cfd-bea7-472a-9557-493c0c26b0fb",
-	"translatorType": 1,
 	"label": "MEDLINE/nbib",
 	"creator": "Sebastian Karcher",
 	"target": "txt",
 	"minVersion": "4.0",
-	"maxVersion": null,
+	"maxVersion": "",
 	"priority": 100,
 	"inRepository": true,
-	"lastUpdated": "2020-08-09 01:20:00"
+	"translatorType": 1,
+	"lastUpdated": "2022-02-21 17:06:30"
 }
 
 /*
@@ -146,6 +146,14 @@ function processTag(item, tag, value) {
 	else if (tag == "DP") {
 		item.date = value;
 	}
+	// Save link to attached link
+	else if (tag == "LID") {
+		// Pubmed adds all sorts of different IDs in here, so make sure these are URLs
+		if (value.startsWith("http")) {
+			item.attachments.push({ url: value, title: "Catalog Link", snapshot: false });
+		// If the value is tagged as a PII, we can use this as a page number if we have not previously managed to extract one
+		} else if (value.includes("[pii]")) item.pagesBackup = value.replace(/\s*\[pii\]/, "");
+	}
 	else if (tag == "MH" || tag == "OT") {
 		item.tags.push(value);
 	}
@@ -185,7 +193,7 @@ function doImport() {
 
 			// then fetch the tag and data from this line
 			tag = line.match(/^[A-Z0-9]+/)[0];
-			data = line.substr(line.indexOf("-") + 1);
+			data = line.substr(line.indexOf("-") + 1).trim();
 		}
 		else if (tag) {
 			// otherwise, assume this is data from the previous line continued
@@ -230,7 +238,17 @@ function finalizeItem(item) {
 		if (fullPageRange) {
 			item.pages = fullPageRange;
 		}
+	// If there is not an explicitly defined page range, try and use the value extracted from the LID field
+	} else if (item.pagesBackup) item.pages = item.pagesBackup;
+	delete item.pagesBackup;
+	// check for and remove duplicate ISSNs
+	if (item.ISSN && item.ISSN.includes(" ")) {
+		let ISSN = item.ISSN.split(/\s/);
+		// convert to Set and back
+		ISSN = [...new Set(ISSN)];
+		item.ISSN = ISSN.join(" ");
 	}
+	
 	// journal article is the fallback item type
 	if (!item.itemType) item.itemType = inputTypeMap["Journal Article"];
 	// titles for books are mapped to bookTitle
@@ -291,7 +309,7 @@ var testCases = [
 					}
 				],
 				"date": "1996 Jul 9",
-				"ISSN": "0027-8424 0027-8424",
+				"ISSN": "0027-8424",
 				"abstractNote": "In the structure of bovine mitochondrial F1-ATPase that was previously determined with crystals grown in the presence of adenylyl-imidodiphosphate (AMP-PNP) and ADP, the three catalytic beta-subunits have different conformations and nucleotide occupancies. Adenylyl-imidodiphosphate is bound to one beta-subunit (betaTP), ADP is bound to the second (betaDP), and no nucleotide is bound to the  third (betaE). Here we show that the uncompetitive inhibitor aurovertin B binds to bovine F1 at two equivalent sites in betaTP and betaE, in a cleft between the  nucleotide binding and C-terminal domains. In betaDP, the aurovertin B pocket is  incomplete and is inaccessible to the inhibitor. The aurovertin B bound to betaTP interacts with alpha-Glu399 in the adjacent alphaTP subunit, whereas the aurovertin B bound to betaE is too distant from alphaE to make an equivalent interaction. Both sites encompass betaArg-412, which was shown by mutational studies to be involved in binding aurovertin. Except for minor changes around the aurovertin pockets, the structure of bovine F1-ATPase is the same as determined previously. Aurovertin B appears to act by preventing closure of the catalytic interfaces, which is essential for a catalytic mechanism involving cyclic interconversion of catalytic sites.",
 				"extra": "PMID: 8692918 \nPMCID: PMC38908",
 				"issue": "14",
@@ -302,21 +320,51 @@ var testCases = [
 				"volume": "93",
 				"attachments": [],
 				"tags": [
-					"*Protein Structure, Secondary",
-					"Adenylyl Imidodiphosphate/pharmacology",
-					"Animals",
-					"Arginine",
-					"Aurovertins/*chemistry/*metabolism",
-					"Binding Sites",
-					"Cattle",
-					"Crystallography, X-Ray",
-					"Enzyme Inhibitors/chemistry/metabolism",
-					"Glutamic Acid",
-					"Macromolecular Substances",
-					"Models, Molecular",
-					"Molecular Structure",
-					"Myocardium/enzymology",
-					"Proton-Translocating ATPases/*chemistry/*metabolism"
+					{
+						"tag": "*Protein Structure, Secondary"
+					},
+					{
+						"tag": "Adenylyl Imidodiphosphate/pharmacology"
+					},
+					{
+						"tag": "Animals"
+					},
+					{
+						"tag": "Arginine"
+					},
+					{
+						"tag": "Aurovertins/*chemistry/*metabolism"
+					},
+					{
+						"tag": "Binding Sites"
+					},
+					{
+						"tag": "Cattle"
+					},
+					{
+						"tag": "Crystallography, X-Ray"
+					},
+					{
+						"tag": "Enzyme Inhibitors/chemistry/metabolism"
+					},
+					{
+						"tag": "Glutamic Acid"
+					},
+					{
+						"tag": "Macromolecular Substances"
+					},
+					{
+						"tag": "Models, Molecular"
+					},
+					{
+						"tag": "Molecular Structure"
+					},
+					{
+						"tag": "Myocardium/enzymology"
+					},
+					{
+						"tag": "Proton-Translocating ATPases/*chemistry/*metabolism"
+					}
 				],
 				"notes": [],
 				"seeAlso": []
@@ -456,7 +504,7 @@ var testCases = [
 					}
 				],
 				"date": "1993 Oct 8",
-				"ISSN": "0092-8674 0092-8674",
+				"ISSN": "0092-8674",
 				"abstractNote": "Src homology 3 (SH3) domains have been implicated in mediating protein-protein interactions in receptor signaling processes; however, the precise role of this domain remains unclear. In this report, affinity purification techniques were used to identify the GTPase dynamin as an SH3 domain-binding protein. Selective binding to a subset of 15 different recombinant SH3 domains occurs through proline-rich sequence motifs similar to those that mediate the interaction of the SH3 domains of Grb2 and Abl proteins to the guanine nucleotide exchange protein,  Sos, and to the 3BP1 protein, respectively. Dynamin GTPase activity is stimulated by several of the bound SH3 domains, suggesting that the function of the SH3 module is not restricted to protein-protein interactions but may also include the interactive regulation of GTP-binding proteins.",
 				"extra": "PMID: 8402898",
 				"issue": "1",
@@ -467,24 +515,60 @@ var testCases = [
 				"volume": "75",
 				"attachments": [],
 				"tags": [
-					"Amino Acid Sequence",
-					"Animals",
-					"Binding Sites",
-					"Brain/*enzymology",
-					"Drosophila/genetics",
-					"Dynamins",
-					"Enzyme Activation",
-					"GTP Phosphohydrolases/isolation & purification/*metabolism",
-					"Glutathione Transferase/metabolism",
-					"Humans",
-					"Kinetics",
-					"Mice",
-					"Molecular Sequence Data",
-					"Rats",
-					"Recombinant Fusion Proteins/metabolism",
-					"Recombinant Proteins/isolation & purification/metabolism",
-					"Sequence Homology, Amino Acid",
-					"Signal Transduction"
+					{
+						"tag": "Amino Acid Sequence"
+					},
+					{
+						"tag": "Animals"
+					},
+					{
+						"tag": "Binding Sites"
+					},
+					{
+						"tag": "Brain/*enzymology"
+					},
+					{
+						"tag": "Drosophila/genetics"
+					},
+					{
+						"tag": "Dynamins"
+					},
+					{
+						"tag": "Enzyme Activation"
+					},
+					{
+						"tag": "GTP Phosphohydrolases/isolation & purification/*metabolism"
+					},
+					{
+						"tag": "Glutathione Transferase/metabolism"
+					},
+					{
+						"tag": "Humans"
+					},
+					{
+						"tag": "Kinetics"
+					},
+					{
+						"tag": "Mice"
+					},
+					{
+						"tag": "Molecular Sequence Data"
+					},
+					{
+						"tag": "Rats"
+					},
+					{
+						"tag": "Recombinant Fusion Proteins/metabolism"
+					},
+					{
+						"tag": "Recombinant Proteins/isolation & purification/metabolism"
+					},
+					{
+						"tag": "Sequence Homology, Amino Acid"
+					},
+					{
+						"tag": "Signal Transduction"
+					}
 				],
 				"notes": [],
 				"seeAlso": []
@@ -519,34 +603,93 @@ var testCases = [
 				"volume": "129",
 				"attachments": [],
 				"tags": [
-					"*Health Knowledge, Attitudes, Practice",
-					"*Public Health Practice",
-					"Abusive head trauma",
-					"Adolescent",
-					"Adult",
-					"Caregivers/*education/psychology/statistics & numerical data",
-					"Child Abuse/*prevention & control",
-					"Craniocerebral Trauma/*prevention & control",
-					"Cross-Sectional Studies",
-					"Crying",
-					"Crying/psychology",
-					"Female",
-					"Follow-Up Studies",
-					"Humans",
-					"Infant",
-					"Infant, Newborn",
-					"Intervention",
-					"Japan",
-					"Male",
-					"Pamphlets",
-					"Parents/*education/psychology",
-					"Program Evaluation",
-					"Public health",
-					"Questionnaires",
-					"Shaken Baby Syndrome/*prevention & control",
-					"Shaken baby syndrome",
-					"Videodisc Recording",
-					"Young Adult"
+					{
+						"tag": "*Health Knowledge, Attitudes, Practice"
+					},
+					{
+						"tag": "*Public Health Practice"
+					},
+					{
+						"tag": "Abusive head trauma"
+					},
+					{
+						"tag": "Adolescent"
+					},
+					{
+						"tag": "Adult"
+					},
+					{
+						"tag": "Caregivers/*education/psychology/statistics & numerical data"
+					},
+					{
+						"tag": "Child Abuse/*prevention & control"
+					},
+					{
+						"tag": "Craniocerebral Trauma/*prevention & control"
+					},
+					{
+						"tag": "Cross-Sectional Studies"
+					},
+					{
+						"tag": "Crying"
+					},
+					{
+						"tag": "Crying/psychology"
+					},
+					{
+						"tag": "Female"
+					},
+					{
+						"tag": "Follow-Up Studies"
+					},
+					{
+						"tag": "Humans"
+					},
+					{
+						"tag": "Infant"
+					},
+					{
+						"tag": "Infant, Newborn"
+					},
+					{
+						"tag": "Intervention"
+					},
+					{
+						"tag": "Japan"
+					},
+					{
+						"tag": "Japan"
+					},
+					{
+						"tag": "Male"
+					},
+					{
+						"tag": "Pamphlets"
+					},
+					{
+						"tag": "Parents/*education/psychology"
+					},
+					{
+						"tag": "Program Evaluation"
+					},
+					{
+						"tag": "Public health"
+					},
+					{
+						"tag": "Questionnaires"
+					},
+					{
+						"tag": "Shaken Baby Syndrome/*prevention & control"
+					},
+					{
+						"tag": "Shaken baby syndrome"
+					},
+					{
+						"tag": "Videodisc Recording"
+					},
+					{
+						"tag": "Young Adult"
+					}
 				],
 				"notes": [],
 				"seeAlso": []
@@ -580,7 +723,12 @@ var testCases = [
 				"pages": "12-24",
 				"publicationTitle": "Journal of Applied Testing Technology",
 				"volume": "21",
-				"attachments": [],
+				"attachments": [
+					{
+						"title": "Catalog Link",
+						"snapshot": false
+					}
+				],
 				"tags": [
 					{
 						"tag": "Adaptive Testing"
@@ -631,7 +779,12 @@ var testCases = [
 				"language": "English",
 				"publicationTitle": "Language Testing in Asia",
 				"volume": "9",
-				"attachments": [],
+				"attachments": [
+					{
+						"title": "Catalog Link",
+						"snapshot": false
+					}
+				],
 				"tags": [
 					{
 						"tag": "College Students"
@@ -699,7 +852,12 @@ var testCases = [
 				"date": "2019",
 				"abstractNote": "As test preparation becomes widely accessible through different delivery systems, large-scale studies of test preparation efficacy that involve a variety of test preparation activities become more important to understanding the value and impact of test preparation activities on both the ACT and SAT. In this paper, the authors examine the impact of participating in test preparation prior to retaking the ACT test. The study focused on addressing three questions: (1) Using a pretest-posttest design, do students who participate in test preparation have larger score gains relative to students who did not participate in test preparation; does the test preparation effect depend on students' pretest scores?; (2) Among students who participated in test preparation, is the number of hours spent participating in each of 10 test preparation activities related to retest scores?; and (3) Among students who participated in test preparation, do their own beliefs that they might have been ill-prepared to take the test, regardless of the test preparation activities they engaged in, impact retest scores? The study findings showed that test preparation improved students' retest scores, and this effect did not differ depending on students' first ACT score. Among specific test prep activities, only the number of hours using a private tutor resulted in increased score gains above the overall effect of test prep. Students who reported feeling inadequately prepared for the second test had ACT Composite scores that were lower than those students who felt adequately prepared.",
 				"publicationTitle": "ACT, Inc.",
-				"attachments": [],
+				"attachments": [
+					{
+						"title": "Catalog Link",
+						"snapshot": false
+					}
+				],
 				"tags": [
 					{
 						"tag": "Achievement Gains"
@@ -724,6 +882,81 @@ var testCases = [
 					},
 					{
 						"tag": "Tutoring"
+					}
+				],
+				"notes": [],
+				"seeAlso": []
+			}
+		]
+	},
+	{
+		"type": "import",
+		"input": "PMID- 35128459\nOWN - NLM\nSTAT- PubMed-not-MEDLINE\nLR  - 20220208\nIS  - 2641-9157 (Electronic)\nIS  - 2641-9157 (Linking)\nVI  - 4\nIP  - 1\nDP  - 2021\nTI  - Slow Burns: A Qualitative Study of Burn Pit and Toxic Exposures Among Military \n      Veterans Serving in Afghanistan, Iraq and Throughout the Middle East.\nLID - 1042 [pii]\nAB  - During deployment to the Persian Gulf War and Southwest Asia theatre of operations, \n      Veterans often experienced various hazards, foremost being open-air burn pits and \n      oil well fires. While over 23 presumptive conditions (ranging from brain cancer, \n      interstitial lung disease, and lymphomas to sleep/mood disorders, depression, and \n      cognitive impairment) have been studied in connection with their military-related \n      exposures, there is a paucity of qualitative research on this topic. This is \n      especially true in the context of explanatory models and health belief systems, \n      vis-à-vis underlying social and cultural factors. The current paper provides a \n      balanced conceptual framework (summarizing causal virtues and shortcomings) about \n      the challenges that Veterans encounter when seeking medical care, screening \n      assessments and subsequent treatments.\nFAU - Bith-Melander, Pollie\nAU  - Bith-Melander P\nAD  - Department of Social Work, California State University, Stanislaus, Turlock, CA, \n      USA.\nFAU - Ratliff, Jack\nAU  - Ratliff J\nAD  - Department of Medical-Surgical Oncology, James A Haley Veterans Affairs Hospital, \n      Tampa, FL, USA.\nAD  - Military Exposures Team, HunterSeven Foundation, Providence, RI, USA.\nFAU - Poisson, Chelsey\nAU  - Poisson C\nAD  - Military Exposures Team, HunterSeven Foundation, Providence, RI, USA.\nFAU - Jindal, Charulata\nAU  - Jindal C\nAD  - Harvard Medical School, Harvard University, Boston, USA.\nFAU - Ming Choi, Yuk\nAU  - Ming Choi Y\nAD  - Signify Health, Dallas, TX, 75244, USA.\nFAU - Efird, Jimmy T\nAU  - Efird JT\nAD  - Cooperative Studies Program Epidemiology Center, Health Services Research and \n      Development, DVAHCS, Durham, USA.\nLA  - eng\nPT  - Journal Article\nDEP - 20211227\nTA  - Ann Psychiatry Clin Neurosci\nJT  - Annals of psychiatry and clinical neuroscience\nJID - 9918334788106676\nPMC - PMC8816568\nMID - NIHMS1773706\nOTO - NOTNLM\nOT  - Burn pits\nOT  - Deployment anthropology\nOT  - Explanatory models\nOT  - Military exposures\nOT  - Oil well fires\nOT  - Qualitative analysis\nEDAT- 2022/02/08 06:00\nMHDA- 2022/02/08 06:01\nCRDT- 2022/02/07 05:37\nPHST- 2022/02/07 05:37 [entrez]\nPHST- 2022/02/08 06:00 [pubmed]\nPHST- 2022/02/08 06:01 [medline]\nAID - 1042 [pii]\nPST - ppublish\nSO  - Ann Psychiatry Clin Neurosci. 2021;4(1):1042. Epub 2021 Dec 27.\n",
+		"items": [
+			{
+				"itemType": "journalArticle",
+				"title": "Slow Burns: A Qualitative Study of Burn Pit and Toxic Exposures Among Military Veterans Serving in Afghanistan, Iraq and Throughout the Middle East.",
+				"creators": [
+					{
+						"firstName": "Pollie",
+						"lastName": "Bith-Melander",
+						"creatorType": "author"
+					},
+					{
+						"firstName": "Jack",
+						"lastName": "Ratliff",
+						"creatorType": "author"
+					},
+					{
+						"firstName": "Chelsey",
+						"lastName": "Poisson",
+						"creatorType": "author"
+					},
+					{
+						"firstName": "Charulata",
+						"lastName": "Jindal",
+						"creatorType": "author"
+					},
+					{
+						"firstName": "Yuk",
+						"lastName": "Ming Choi",
+						"creatorType": "author"
+					},
+					{
+						"firstName": "Jimmy T.",
+						"lastName": "Efird",
+						"creatorType": "author"
+					}
+				],
+				"date": "2021",
+				"ISSN": "2641-9157",
+				"abstractNote": "During deployment to the Persian Gulf War and Southwest Asia theatre of operations, Veterans often experienced various hazards, foremost being open-air burn pits and  oil well fires. While over 23 presumptive conditions (ranging from brain cancer,  interstitial lung disease, and lymphomas to sleep/mood disorders, depression, and  cognitive impairment) have been studied in connection with their military-related  exposures, there is a paucity of qualitative research on this topic. This is  especially true in the context of explanatory models and health belief systems,  vis-à-vis underlying social and cultural factors. The current paper provides a  balanced conceptual framework (summarizing causal virtues and shortcomings) about  the challenges that Veterans encounter when seeking medical care, screening  assessments and subsequent treatments.",
+				"extra": "PMID: 35128459 \nPMCID: PMC8816568",
+				"issue": "1",
+				"journalAbbreviation": "Ann Psychiatry Clin Neurosci",
+				"language": "eng",
+				"pages": "1042",
+				"publicationTitle": "Annals of psychiatry and clinical neuroscience",
+				"volume": "4",
+				"attachments": [],
+				"tags": [
+					{
+						"tag": "Burn pits"
+					},
+					{
+						"tag": "Deployment anthropology"
+					},
+					{
+						"tag": "Explanatory models"
+					},
+					{
+						"tag": "Military exposures"
+					},
+					{
+						"tag": "Oil well fires"
+					},
+					{
+						"tag": "Qualitative analysis"
 					}
 				],
 				"notes": [],

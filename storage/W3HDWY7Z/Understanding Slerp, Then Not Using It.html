@@ -1,0 +1,408 @@
+<html xmlns:v=urn:schemas-microsoft-com:vml xmlns:o=urn:schemas-microsoft-com:office:office xmlns=http://www.w3.org/TR/REC-html40 style><!--
+ Page saved with SingleFile 
+ url: http://number-none.com/product/Understanding%20Slerp,%20Then%20Not%20Using%20It/ 
+ saved date: Sat Jun 25 2022 21:21:23 GMT+0530 (India Standard Time)
+--><meta charset=utf-8>
+<meta http-equiv=Content-Language content=en-us>
+<meta name=GENERATOR content="Microsoft FrontPage 5.0">
+<meta name=ProgId content=FrontPage.Editor.Document>
+<link rel=File-List href=http://number-none.com/product/Understanding%20Slerp,%20Then%20Not%20Using%20It/index_files/filelist.xml>
+<title>The Inner Product</title>
+<style><!--table.MsoTableGrid{font-size:10.0pt;font-family:"Times New Roman"}--></style>
+<!--[if !mso]>
+<style>
+v\:*         { behavior: url(#default#VML) }
+o\:*         { behavior: url(#default#VML) }
+.shape       { behavior: url(#default#VML) }
+</style>
+<![endif]--><!--[if gte mso 9]>
+<xml><o:shapedefaults v:ext="edit" spidmax="1027"/>
+</xml><![endif]-->
+<link type=image/x-icon rel="shortcut icon" href="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="><style>.sf-hidden{display:none!important}</style><link rel=canonical href=http://number-none.com/product/Understanding%20Slerp,%20Then%20Not%20Using%20It/><meta http-equiv=content-security-policy content="default-src 'none'; font-src 'self' data:; img-src 'self' data:; style-src 'unsafe-inline'; media-src 'self' data:; script-src 'unsafe-inline' data:;"></head>
+<body data-new-gr-c-s-check-loaded=14.1065.0 data-gr-ext-installed data-new-gr-c-s-loaded=14.1065.0>
+<p align=right style=text-align:right><b><i><span style=font-size:18.0pt>
+The Inner Product</span></i><span style=font-size:18.0pt>, April 2004<br>
+</span></b><span style=font-size:16.0pt>Jonathan Blow (<a style=color:blue;text-decoration:underline;text-underline:single href=mailto:jon@number-none.com>jon@number-none.com</a>)<br>
+Last updated 26 February 2004<br>
+</span><b><span style=font-size:18.0pt>&nbsp;</span></b></p>
+<p align=center><font size=6><b>Understanding Slerp, <br>
+Then Not Using It</b></font></p>
+<p class=MsoNormal align=right style=text-align:right><b><br>
+Related articles:</b></p>
+<p class=MsoNormal align=right style=text-align:right dir=ltr>Hacking 
+Quaternions (March 2002)<br>
+IK with 
+Quaternion Joint Limits (April 2002)<br>
+&nbsp;</p>
+<p class=MsoNormal>Recall that rotations can be represented by unit vectors in 
+4-dimensional space that also have an algebraic structure.&nbsp; These 4-vectors are 
+known as the <i>quaternions</i>, and they’re especially useful for rotation 
+interpolation problems, of the sort required by animation and inverse kinematics 
+systems.</p>
+<p class=MsoNormal>There are an infinite number of paths that transition from 
+rotation A to rotation B, but in general there’s only one “straightest” way to 
+get there, known as the <i>torque-minimal path</i>.&nbsp; Since this path travels 
+along the surface of the 4-sphere, it is inherently curved.&nbsp; The function <i>
+slerp</i> walks along this path at a constant speed; slerp was popularized in 
+the computer graphics industry by Shoemake (see References).</p>
+<p class=MsoNormal>Despite quaternions being very important things, few game 
+programmers understand how they work, the slerp function being an especially 
+mysterious black box.&nbsp; (Shoemake does not present a derivation in his paper; he 
+just gives the formula).&nbsp; Certainly you can derive slerp by considering the 
+geometry of a sphere in 4D space, but such spheres are difficult to visualize.&nbsp; 
+So I’d like to present a derivation of slerp that works differently.</p>
+<p class=MsoNormal><b><font size=4>Slerp solutions are coplanar</font></b></p>
+<p class=MsoNormal>The inputs to slerp are two quaternions, q<sub>0</sub> and 
+q<sub>1</sub>, as well as a scalar parameter t that tells us how far to 
+interpolate between these.&nbsp; (t = 0 gives us q<sub>0</sub>, t = 1 gives us q<sub>1</sub>, 
+and intermediate values of t give us quaternions on the path between q<sub>0</sub> 
+and q<sub>1</sub>).</p>
+<p class=MsoNormal>The first useful thing to realize is that all results from 
+the slerp must lie in the plane P defined by q<sub>0</sub>, q<sub>1</sub> and 
+the origin.&nbsp; I won’t present formal proof here, because I want to get to the 
+meat of the article. &nbsp;So I will make a hand-wavy argument; for a more formal 
+explanation, see Genevieve Walsh’s paper, section 1.1 titled “Geodesics in the 
+three-sphere”.</p>
+<p class=MsoNormal>Because the hypersphere is symmetric in all directions 
+about the origin, we can reflect it across any plane that passes through the 
+origin, producing an equivalent hypersphere.&nbsp;&nbsp;&nbsp; We reflect the sphere across P; 
+because P contains q<sub>0</sub> and q<sub>1</sub>, q<sub>0</sub> and q<sub>1
+</sub>stay in the same places; because the rest of the sphere was mapped to 
+itself, the geometry is the same, so the shortest path did not change.&nbsp; But 
+since every point not contained within P was moved by the reflection, we know 
+the path must be contained in P.&nbsp; (I have assumed here that there is only one 
+shortest path, which is implicit in the idea of constructing a well-formed slerp 
+function; but you can read about geodesics if you want to dig deeper into this 
+subject.)</p>
+<p class=MsoNormal>If this handwaving argument was confusing, you can just 
+take it for granted that slerp always generates great circles of the hypersphere, 
+and great circles are always coplanar (since they are circles!)</p>
+<p class=MsoNormal><b><font size=4>How this co-planarity helps</font></b></p>
+<p class=MsoNormal>Once we believe the results of slerp are all coplanar, the 
+situation is still somewhat confusing since that plane P is oriented arbitrarily 
+in 4-dimensional space.&nbsp; But we can employ a simplifying strategy – suppose we 
+build a transform that moves P from its arbitrary orientation onto the familiar 
+XY plane.&nbsp; We can solve the interpolation problem in 2D space, then transform 
+the result back to the arbitrary orientation in 4D.</p>
+<p class=MsoNormal>Such a transformation could be represented by a 4x4 
+matrix.&nbsp; However, it would take extra CPU to compute and apply the 
+transformation.&nbsp; Luckily for us, this transformation is unnecessary.&nbsp; If we feel 
+like we need it, that’s because we are overly attached to our coordinate 
+systems.&nbsp; When we adopt a Zen-like detachment from the idea of coordinates, we 
+find that the problem is simplified.</p>
+<p class=MsoNormal>Linear objects, like vectors and planes, exist 
+independently from the methods we use to represent them (i.e. coordinate 
+systems).&nbsp; These objects always obey the properties of linear algebra.&nbsp; Thus we 
+can derive formulas directly from these linear properties, without ever 
+mentioning coordinates – in the literature this is called a <i>coordinate-free 
+derivation</i>.&nbsp; Formulas with coordinate-free derivations are very powerful; 
+they must be true in all linear spaces, regardless of petty details like the 
+total number of dimensions in the space.&nbsp; (Except perhaps for 
+infinite-dimensional spaces.&nbsp; Those are tricky and we should take great care 
+when venturing into them, <i>hic sunt dracones</i> and all that.)</p>
+<p class=MsoNormal>If you’re not used to thinking in a coordinate-free way, 
+Sheldon Axler’s book <i>Linear Algebra Done Right</i> is a good start (see 
+References).&nbsp; For now I will show a coordinate-free derivation of slerp using 
+2-dimensional illustrations (which are all you need!).&nbsp; </p>
+<p class=MsoNormal><b><font size=4>Coordinate-free derivation of slerp</font></b></p>
+<p class=MsoNormal>Our inputs are two unit vectors, v<sub>0</sub> and v<sub>1</sub>, 
+and a scalar t.&nbsp; We are solving for a vector r whose angle with v<sub>0</sub> is
+<i>θ</i> = t <i>θ</i><sub>0</sub>, where <i>θ</i><sub>0</sub> is the angle 
+between v<sub>0</sub> and v<sub>1</sub>.&nbsp; </p>
+<p class=MsoNormal>Figure 1 illustrates the problem.&nbsp; I have drawn v<sub>0</sub> 
+in the direction we usually use for the X axis when drawing the XY plane.&nbsp; This 
+by itself suggests a solution.&nbsp; If we had some vector v<sub>2</sub> that was 
+orthogonal to v<sub>0</sub>, as the Y axis is to the X, then our solution r = v<sub>0</sub>cos<i>θ</i> 
++ v<sub>2</sub>sin<i>θ.</i></p>
+<p class=MsoNormal>Assume our input v<sub>1</sub> is linearly independent from 
+v<sub>0</sub>.&nbsp; (If it isn’t, then the entire slerp problem is ill-formed; 
+robust implementations of slerp contain a preamble to handle this case).&nbsp; Since 
+v<sub>0 </sub>and v<sub>1</sub> are independent, we can orthonormalize v<sub>1</sub> 
+against v<sub>0</sub> to yield v<sub>2</sub>; see Figure 2.&nbsp; That’s it, we’re 
+basically done!&nbsp; The rest is implementation details, like finding <i>θ</i><sub>0</sub> 
+from v<sub>0</sub> and v<sub>1</sub>.&nbsp; Listing 1 contains pseudocode for the 
+whole function.&nbsp; That’s slerp; slerp is not some scary 4-dimensional thing.&nbsp; 
+Listing 2 contains actual C++ source code.&nbsp; Though this code is written 
+specifically for some type called a Quaternion, it is valid for vectors 
+represented in an arbitrary number of dimensions; so if you have some dynamic 
+n-dimensional vector class, you can just plug in the same source code.&nbsp; (Perhaps 
+you want to interpolate surface normals on the unit sphere in R<sup>3</sup>).<br>
+&nbsp;</p>
+<table border=1 cellpadding=0 cellspacing=0 style=border-collapse:collapse bordercolor=#111111 width=100% id=AutoNumber1>
+ <tbody><tr>
+ <td width=50%><!--[if gte vml 1]><v:shapetype id="_x0000_t75"
+ coordsize="21600,21600" o:spt="75" o:preferrelative="t" path="m@4@5l@4@11@9@11@9@5xe"
+ filled="f" stroked="f">
+ <v:stroke joinstyle="miter"/>
+ <v:formulas>
+  <v:f eqn="if lineDrawn pixelLineWidth 0"/>
+  <v:f eqn="sum @0 1 0"/>
+  <v:f eqn="sum 0 0 @1"/>
+  <v:f eqn="prod @2 1 2"/>
+  <v:f eqn="prod @3 21600 pixelWidth"/>
+  <v:f eqn="prod @3 21600 pixelHeight"/>
+  <v:f eqn="sum @0 0 1"/>
+  <v:f eqn="prod @6 1 2"/>
+  <v:f eqn="prod @7 21600 pixelWidth"/>
+  <v:f eqn="sum @8 21600 0"/>
+  <v:f eqn="prod @7 21600 pixelHeight"/>
+  <v:f eqn="sum @10 21600 0"/>
+ </v:formulas>
+ <v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect"/>
+ <o:lock v:ext="edit" aspectratio="t"/>
+</v:shapetype><v:shape id="_x0000_s1027" type="#_x0000_t75" style='width:6in;
+ height:453.75pt'>
+ <v:imagedata src="index_files/image001.png" o:title="figure1"/>
+</v:shape><![endif]--><!--[if !vml]--><img border=0 width=576 height=605 src="data:image/jpeg;base64,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" v:shapes=_x0000_s1027></td>
+ <td width=50%><b><!--[if gte vml 1]><v:shape
+ id="_x0000_s1028" type="#_x0000_t75" style='width:6in;height:453.75pt'>
+ <v:imagedata src="index_files/image003.png" o:title="figure2"/>
+</v:shape><![endif]--><!--[if !vml]--><img border=0 width=576 height=605 src=data:image/jpeg;base64,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 v:shapes=_x0000_s1028></b></td>
+ </tr>
+ <tr>
+ <td width=50%>
+ <p class=MsoNormal><font size=4><b>Figure 1: </b>We want to find the 
+ vector <i>r</i> that is at angle </font><i>θ </i>from v<sub>0</sub>.</p></td>
+ <td width=50%><font size=4><b>Figure 2: </b>Using</font> v<sub>1</sub>, 
+ we build the orthonormal basis {&nbsp; v<sub>0</sub>, v<sub>2</sub> }, which 
+ allows us to easily compute <i>r</i>.</td>
+ </tr>
+</table>
+<p class=MsoNormal>Suppose we were not trying to be coordinate-free, and just 
+wanted to solve slerp in the XY plane.&nbsp; Then finding v<sub>2</sub> is even 
+easier; we can just say v<sub>2</sub> = v<sub>0┴</sub>, that is, v<sub>2x</sub> 
+= -v<sub>0y</sub>, v<sub>2y</sub> = v<sub>0x</sub>.&nbsp; But if we then try and 
+raise the problem to higher dimensions, we don’t know what to do with this 
+operator <sub>┴</sub>.&nbsp; It assumes we are living in XY coordinates, which is a 
+relatively weak stance for an operator to take.</p>
+<p class=MsoNormal>There’s a cosmetic difference between this slerp and the 
+Shoemake code.&nbsp; Where I use a Normalize function, Shoemake divides by sin<i>θ</i><sub>0</sub>.&nbsp; 
+Indeed this has the same effect as a Normalize; some trig will tell you that the 
+length of v<sub>2</sub> prior to normalization is sin<i>θ</i><sub>0</sub>, so 
+the divide turns it back into a unit vector.&nbsp; I like to use the explicit 
+Normalize, though, because it emphasizes the vector nature of the computation.&nbsp; 
+As to which method is faster, that’s unclear, as it depends heavily on the 
+target hardware.&nbsp; But you shouldn’t care, because if you’re calling slerp in the 
+first place, you are already in for a world of slowness; small deviations in 
+that slowness are not going to matter much.</p>
+<p class=MsoNormal>In fact, game programmers should be using slerp a lot less 
+often than they do.&nbsp; I think it’s an important function to understand – hence 
+this article! – but a deep understanding of the function implies that you know 
+when not to use it, which is most of the time.&nbsp; <br>
+&nbsp;</p>
+<table border=1 cellpadding=0 cellspacing=0 style=border-collapse:collapse bordercolor=#111111 width=90% id=AutoNumber2 height=353>
+ <tbody><tr>
+ <td width=34% height=19><b>Listing 1: Pseudocode for slerp</b></td>
+ <td width=66% height=19>
+ <p class=MsoNormal><b>Listing 2: C++ code for slerp</b></p></td>
+ </tr>
+ <tr>
+ <td width=34% valign=top height=333>
+ <p class=MsoNormal>; Inputs are: unit vectors v<sub>0</sub> and v<sub>1</sub>, 
+ scalar t<br>
+ ; v<sub>0</sub> and v<sub>1</sub> are linearly independent</p>
+ <p class=MsoNormal>Let <i>θ</i><sub>0</sub> = acos(v<sub>0</sub> · v<sub>1</sub>)<br>
+ Let <i>θ </i>= t<i>θ</i><sub>0<br>
+ </sub>Let v2 = Normalize(v<sub>1</sub> - (v<sub>0</sub> · v<sub>1</sub>)v<sub>0</sub>)<br>
+ return v<sub>0</sub>cos<i>θ</i> + v<sub>2</sub>sin<i>θ</i></p></td>
+ <td width=66% valign=top height=333>
+ <p class=MsoNormal>
+ <span style="font-size:9.0pt;font-family:Courier New">Quaternion 
+ slerp(Quaternion const &amp;v0, Quaternion const &amp;v1, double t) {<br>
+ &nbsp;&nbsp;&nbsp; <font color=#0000FF>// v0 and v1 should be unit length or else<br>
+ &nbsp;&nbsp;&nbsp; // something broken will happen.</font></span></p>
+ <p class=MsoNormal>
+ <span style="font-size:9.0pt;font-family:Courier New">&nbsp;&nbsp;&nbsp;
+ <font color=#0000FF>// Compute the cosine of the angle between the two 
+ vectors.</font><br>
+ &nbsp;&nbsp;&nbsp; double dot = dot_product(v0, v1);<br>
+ <br>
+ &nbsp;&nbsp;&nbsp; const double DOT_THRESHOLD = 0.9995;<br>
+ &nbsp;&nbsp;&nbsp; if (dot &gt; DOT_THRESHOLD) {<br>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <font color=#0000FF>// If the inputs are too close for comfort, 
+ linearly interpolate<br>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; // and normalize the result.</font><br>
+ <br>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Quaternion result = v0 + t*(v1 – v0);<br>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; result.normalize();<br>
+ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return result;<br>
+ &nbsp;&nbsp;&nbsp; }<br>
+ <br>
+ &nbsp;&nbsp;&nbsp; Clamp(dot, -1, 1);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <font color=#0000FF>// Robustness: Stay 
+ within domain of acos()</font><br>
+ &nbsp;&nbsp;&nbsp; double theta_0 = acos(dot);&nbsp; <font color=#0000FF>// theta_0 = angle 
+ between input vectors</font><br>
+ &nbsp;&nbsp;&nbsp; double theta = theta_0*t;&nbsp; &nbsp;&nbsp;<font color=#0000FF>// theta = angle 
+ between v0 and result&nbsp;<br>
+ </font><br>
+&nbsp;&nbsp;&nbsp; Quaternion v2 = v1 – v0*dot;<br>
+&nbsp;&nbsp;&nbsp; v2.normalize();&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;<font color=#0000FF>// { v0, 
+ v2 } is now an orthonormal basis<br>
+ </font><br>
+ &nbsp;&nbsp;&nbsp; return v0*cos(theta) + v2*sin(theta);<br>
+ }</span></p></td>
+ </tr>
+</table>
+<p class=MsoNormal><b><font size=4><br>
+Alternatives to slerp</font></b></p>
+<p class=MsoNormal>As discussed in the paper by Muratori and Bloom (see 
+References), there are 3 basic properties we often want when interpolating 
+rotations: commutativity, constant velocity, and minimal torque.&nbsp; Unfortunately, 
+it seems impossible to get all three at once. There are three major methods of 
+quaternion interpolation, and each of those methods gives you two of the three 
+desirable properties.&nbsp; The choices are: quaternion slerp (popularized by Ken 
+Shoemake), normalized quaternion lerp (which I will call <i>nlerp</i> from now 
+on; also discussed in the Shoemake paper but not considered important there; 
+popularized by Casey Muratori, and some of us consider it very important in 
+games now), and log-quaternion lerp (also known as <i>exponential map 
+interpolation</i>; see the paper by Grassia).&nbsp; See Table 1 for a handy summary 
+of the properties of each interpolation method.&nbsp; <br>
+<br>
+&nbsp;</p>
+<p class=MsoNormal><b>Table 1: Three methods of rotation interpolation, and 
+the properties they satisfy.&nbsp; </b>‘nlerp’ is the normalized lerp.</p>
+<table class=MsoTableGrid border=1 cellspacing=0 cellpadding=0 style="border-collapse:collapse;border:medium none">
+ <tbody><tr>
+ <td width=148 valign=top style="width:110.7pt;border:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal>&nbsp;</p></td>
+ <td width=148 valign=top style="width:110.7pt;border-left:medium none;border-right:1.0pt solid windowtext;border-top:1.0pt solid windowtext;border-bottom:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal align=center style=text-align:center><b>
+ commutative</b></p></td>
+ <td width=148 valign=top style="width:110.7pt;border-left:medium none;border-right:1.0pt solid windowtext;border-top:1.0pt solid windowtext;border-bottom:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal align=center style=text-align:center><b>constant 
+ velocity</b></p></td>
+ <td width=148 valign=top style="width:110.7pt;border-left:medium none;border-right:1.0pt solid windowtext;border-top:1.0pt solid windowtext;border-bottom:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal align=center style=text-align:center><b>
+ torque-minimal</b></p></td>
+ </tr>
+ <tr>
+ <td width=148 valign=top style="width:110.7pt;border-left:1.0pt solid windowtext;border-right:1.0pt solid windowtext;border-top:medium none;border-bottom:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal><b>quaternion slerp</b></p></td>
+ <td width=148 valign=top style="width:110.7pt;border-left:medium none;border-right:1.0pt solid windowtext;border-top:medium none;border-bottom:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal align=center style=text-align:center><b>No!</b></p></td>
+ <td width=148 valign=top style="width:110.7pt;border-left:medium none;border-right:1.0pt solid windowtext;border-top:medium none;border-bottom:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal align=center style=text-align:center>Yes</p></td>
+ <td width=148 valign=top style="width:110.7pt;border-left:medium none;border-right:1.0pt solid windowtext;border-top:medium none;border-bottom:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal align=center style=text-align:center>Yes</p></td>
+ </tr>
+ <tr>
+ <td width=148 valign=top style="width:110.7pt;border-left:1.0pt solid windowtext;border-right:1.0pt solid windowtext;border-top:medium none;border-bottom:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal><b>quaternion nlerp</b></p></td>
+ <td width=148 valign=top style="width:110.7pt;border-left:medium none;border-right:1.0pt solid windowtext;border-top:medium none;border-bottom:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal align=center style=text-align:center>Yes</p></td>
+ <td width=148 valign=top style="width:110.7pt;border-left:medium none;border-right:1.0pt solid windowtext;border-top:medium none;border-bottom:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal align=center style=text-align:center><b>No!</b></p></td>
+ <td width=148 valign=top style="width:110.7pt;border-left:medium none;border-right:1.0pt solid windowtext;border-top:medium none;border-bottom:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal align=center style=text-align:center>Yes</p></td>
+ </tr>
+ <tr>
+ <td width=148 valign=top style="width:110.7pt;border-left:1.0pt solid windowtext;border-right:1.0pt solid windowtext;border-top:medium none;border-bottom:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal><b>log-quaternion lerp</b></p></td>
+ <td width=148 valign=top style="width:110.7pt;border-left:medium none;border-right:1.0pt solid windowtext;border-top:medium none;border-bottom:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal align=center style=text-align:center>Yes</p></td>
+ <td width=148 valign=top style="width:110.7pt;border-left:medium none;border-right:1.0pt solid windowtext;border-top:medium none;border-bottom:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal align=center style=text-align:center>Yes</p></td>
+ <td width=148 valign=top style="width:110.7pt;border-left:medium none;border-right:1.0pt solid windowtext;border-top:medium none;border-bottom:1.0pt solid windowtext;padding-left:5.4pt;padding-right:5.4pt;padding-top:0in;padding-bottom:0in">
+ <p class=MsoNormal align=center style=text-align:center><b>No!</b></p></td>
+ </tr>
+</table>
+<p class=MsoNormal><br>
+<br>
+Currently, slerp is considered by most to be the authoritative method for 
+rotation interpolation. This is because most programmers don’t understand slerp, 
+much less the alternatives; they just hear from other people that slerp is the 
+right thing to do, then they paste the Shoemake routines into their source code. 
+&nbsp;Shoemake presented the concept well and his paper was very helpful and 
+relevant. &nbsp;But as Table 1 clearly suggests, we have several available solutions 
+and we can choose the one that fits our problem best.</p>
+<p class=MsoNormal>Right now there are a few major tasks in games for which we 
+use rotation interpolation; mainly they involve animation interpolation and 
+inverse kinematics.&nbsp; (Camera control, for example, can be viewed as a 
+sub-problem of these.)&nbsp; </p>
+<p class=MsoNormal>When building animation systems, programmers often use 
+slerp to generate rotations in between keyframes, then attempt to optimize the 
+slerp function so that the animation system runs faster.&nbsp; For examples of slerp 
+optimizations, see the Inner Product article “Hacking Quaternions” (March 2002) 
+or Thomas Busser’s feature on PolySlerp (February 2004).&nbsp; Generally these 
+optimized slerps are slower and harder to understand than the normalized linear 
+interpolation.&nbsp; We should only be using them if we really need our rotations to 
+interpolate at constant velocity.</p>
+<p class=MsoNormal>But as Casey clearly pointed out to me, continuity and 
+runtime efficiency are the most important issues for an in-game animation 
+engine, and nlerp delivers these the best.&nbsp; It’s easy to get caught up in the 
+idea that slerp is the “right answer” and to worry about nlerp’s nonconstant 
+velocity, but in reality the issue is unimportant.&nbsp; Slerp is not the “right 
+answer” unless the animator actually used quaternion keys with order-1 
+interpolation when authoring the animation, which is usually not the case.&nbsp; 
+Unless we want to try to duplicate all of the quirks of an animation package’s 
+possible rotation representations (which we don’t), we usually export animations 
+to our game by sampling them at regular intervals from the art package (perhaps 
+sampling at 30Hz, with the samples chosen in some convenient representation, 
+like quaternions); then we perform some compression on those samples (like 
+spline fitting) and save the result to disk.&nbsp; </p>
+<p class=MsoNormal>Animators don’t even know what their animations look like 
+for time values between these 30Hz samples (or whatever frame rate they authored 
+the animation at).&nbsp; Since the animator isn’t intentionally authoring poses at 
+those time values, it’s silly to try and duplicate those poses.</p>
+<p class=MsoNormal>Because of this unintentionality, at runtime we’re 
+concocting whatever rotation path we want in order to fill between samples.&nbsp; In 
+this context of just making stuff up, there’s no reason to spend extra CPU on 
+slerp since we don’t gain any benefit for this expenditure.&nbsp; (To see why it’s 
+pointless, imagine that the animator used Euler keys, in which case the “right 
+answer” is some path that is non-torque-minimal, with non-constant velocity… 
+certainly nothing like what slerp would give you). </p>
+<p class=MsoNormal>In fact, in the highly-compressing sort of animation export 
+system, the nature of the visible animation is controlled at a high level by the 
+spline fitter.&nbsp; The spline fitter is inherently going to adjust for the 
+properties of the low-level interpolator by introducing and adjusting the knots 
+of the spline until acceptable perceptual error is reached.&nbsp; So the exact 
+properties of the runtime rotation interpolator don’t really matter, so long as 
+the path is not discontinuous or harsh.&nbsp; Thus nlerp is really the best choice 
+for these cases.</p>
+<p class=MsoNormal>For inverse kinematics problems, such as example-based IK, 
+we tend to write iterative routines that solve for the goal rotation.&nbsp; Such a 
+routine is not even trying to hit the right answer on the first iteration (it 
+can’t do that), so the constant-velocity property of slerp is not useful.&nbsp; So 
+long as the interpolation is monotonic, like nlerp, then the solver will find 
+the goal without undue trouble.&nbsp; </p>
+<p class=MsoNormal>For example-based IK solvers, and for animation systems 
+that blend more than two animations, commutativity is a highly desirable 
+property, since it ensures that the results of the blend do not depend on the 
+order in which the poses are mixed.&nbsp; Slerp does not provide commutativity, but 
+nlerp does.&nbsp; Commutative blends are much easier to understand and work with.&nbsp; So 
+nlerp is the best choice for these tasks too.</p>
+<p class=MsoNormal><b><font size=4>Conclusion</font></b></p>
+<p class=MsoNormal>Game systems are big and complicated, so there may be some 
+occasions on some games where you really do want to use slerp.&nbsp; But right now, I 
+really can’t think of any; so I encourage you to reconsider the use of slerp in 
+your game if it is in any danger of causing speed problems.&nbsp; Fast slerp 
+approximations add complexity to your engine and increase the difficulty of 
+understanding the whole system, so they should be avoided when nlerp suffices.<b><br>
+&nbsp;</b></p>
+<p class=MsoNormal><b><font size=4>References</font></b>:</p>
+<p class=MsoNormal>Sheldon Axler, <i>Linear Algebra Done Right</i>, 2<sup>nd</sup> 
+ed., Springer, 1997.</p>
+<p class=MsoNormal>Ken Shoemake, “Animating Rotation with Quaternion Curves”, 
+Computer Graphics, Volume 19, Number 3, 1985.</p>
+<p class=MsoNormal>David Eberly, “Quaternion Algebra and Calculus”,
+<a href=http://www.magic-software.com/Documentation/Quaternions.pdf style=color:blue;text-decoration:underline;text-underline:single>
+http://www.magic-software.com/Documentation/Quaternions.pdf</a></p>
+<p class=MsoNormal>Si Brown, “An Introduction To Representing Rotations In 
+Quaternion Arithmetic”,
+<a href="http://www.sjbrown.co.uk/?article=quaternions" style=color:blue;text-decoration:underline;text-underline:single>
+http://www.sjbrown.co.uk/quaternions.html</a></p>
+<p class=MsoNormal>Casey Muratori and Charles Bloom, “A Paper About Rotation 
+Interpolation That We Will Never Finish Because We Are Lazy”, referenced in 
+gdalgorithms mailing list posting at
+<a href=http://www.gdalgorithms.org/archives/2003-05/459f4ae23eb2f34f.html style=color:blue;text-decoration:underline;text-underline:single>
+http://www.gdalgorithms.org/archives/2003-05/459f4ae23eb2f34f.html</a></p>
+<p class=MsoNormal>Genevieve Walsh, “Great Circle Links in the Three-Sphere”, 
+PhD Dissertation from UC Davis, available at
+<a href=http://www.ma.utexas.edu/users/gwalsh/dissertationfinal.pdf style=color:blue;text-decoration:underline;text-underline:single>
+http://www.ma.utexas.edu/users/gwalsh/dissertationfinal.pdf</a></p>
+<p class=MsoNormal>F. Sebastian Grassia, “Practical parameterization of 
+rotations using the exponential map”, Journal of Graphics Tools, volume 3.3, 
+1998.&nbsp; Available at
+<a href=http://graphics.snu.ac.kr/OpenGL2003/10(1112)/expmap.pdf style=color:blue;text-decoration:underline;text-underline:single>
+http://graphics.snu.ac.kr/OpenGL2003/10(1112)/expmap.pdf</a></p>
+<grammarly-desktop-integration data-grammarly-shadow-root=true><template shadowmode=open><style class=sf-hidden>div.grammarly-desktop-integration{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;-moz-user-select:none;-webkit-user-select:none;-ms-user-select:none;user-select:none}div.grammarly-desktop-integration:before{content:attr(data-content)}</style><div aria-label=grammarly-integration role=group tabindex=-1 class=grammarly-desktop-integration data-content='{"mode":"full","isActive":true,"isUserDisabled":false}'></div></template></grammarly-desktop-integration><script data-template-shadow-root>(()=>{document.currentScript.remove();processNode(document);function processNode(node){node.querySelectorAll("template[shadowmode]").forEach(element=>{let shadowRoot = element.parentElement.shadowRoot;if (!shadowRoot) {try {shadowRoot=element.parentElement.attachShadow({mode:element.getAttribute("shadowmode"),delegatesFocus:Boolean(element.getAttribute("delegatesfocus"))});shadowRoot.innerHTML=element.innerHTML;element.remove()} catch (error) {} if (shadowRoot) {processNode(shadowRoot)}}})}})()</script>
